@@ -1,18 +1,28 @@
 const express = require('express')
 const fs = require('fs')
 const cors = require('cors')
-const db = require('./db')
+const { DB } = require('./db')
+const { ERR, MIDDLEWARE } = require('./utils/errors')
 
 const app = express()
-
-const port = 2500
+const users = new DB('users')
 
 //middleware - this is for the req.body, cause express.js doesn't come with this automatically
 app.use(express.json());
 app.use(cors())
+app.use((req, res, next) => {
+  console.log("we are on a middleware!")
+})
 
 //routes
-app.post('/users', (req, res) => {
+const middleware = (req, res, next) => {
+  console.log("middleware")
+}
+
+const controller = (req, res, next) => {
+  if (req.body.name === "lala") {
+    return next(ERR)
+  }
   const content = fs.readFileSync('db/users.json', 'utf-8')
   const json = JSON.parse(content)
 
@@ -20,22 +30,28 @@ app.post('/users', (req, res) => {
 
   fs.writeFileSync(`db/users.json`, JSON.stringify(json, null, 2))
   res.send("Created User")
-})
+}
 
-app.post('/users/:userId', (req, res) => {
-  const { userId } = req.params
+app.post('/users', middleware, controller)
 
-  users.push({ id: +userId, name: `user${userId}` });
-  res.send('successfully added new user');
-})
+// app.post('/users/:userId', (req, res) => {
+//   const { userId } = req.params
+
+//   users.push({ id: +userId, name: `user${userId}` });
+//   res.send('successfully added new user');
+// })
+
+// app.get('/users', (req, res) => {
+//   DB.get
+//   res.send(JSON.parse(users))
+// })
 
 app.get('/users', (req, res) => {
-  const users = fs.readFileSync('db/users.json', 'utf-8')
-  res.send(JSON.parse(users))
+  res.send(users.getData())
 })
 
-app.get('/users/:userId', (req, res) => {
-  res.send(db.findUserIndex(req.params))
+// app.get('/users/:userId', (req, res) => {
+//   res.send(DB.findUserIndex(req.params))
   // const { userId } = req.params
 
   // const content = fs.readFileSync('db/users.json', 'utf-8')
@@ -43,58 +59,64 @@ app.get('/users/:userId', (req, res) => {
 
   // const user = users.find(user => user.id === +userId)
   // res.send(user)
-})
+// })
 
-app.put('/users/:userId', (req, res) => {
-  const { userId } = req.params
+// app.put('/users/:userId', (req, res) => {
+//   const { userId } = req.params
 
-  const content = fs.readFileSync('db/users.json', 'utf-8')
-  const users = JSON.parse(content)
+//   const content = fs.readFileSync('db/users.json', 'utf-8')
+//   const users = JSON.parse(content)
 
-  const userIndex = users.find(user => user.id === +userId)
-  users[userIndex] = {
-    id: +userId,
-    ...req.body
-  }
+//   const userIndex = users.find(user => user.id === +userId)
+//   users[userIndex] = {
+//     id: +userId,
+//     ...req.body
+//   }
 
-  fs.writeFileSync(`db/users.json`, JSON.stringify(users, null, 2))
+//   fs.writeFileSync(`db/users.json`, JSON.stringify(users, null, 2))
 
-  res.send('edited user with PUT request in Express JS')
-})
+//   res.send('edited user with PUT request in Express JS')
+// })
 
-app.delete('/users/:userId', (req, res) => {
-  const { userId } = req.params
+// app.delete('/users/:userId', (req, res) => {
+//   const { userId } = req.params
 
-  const content = fs.readFileSync('db/users.json', 'utf-8')
-  const users = JSON.parse(content)
-  const userIndex = users.findIndex(user => user.id === +userId)
+//   const content = fs.readFileSync('db/users.json', 'utf-8')
+//   const users = JSON.parse(content)
+//   const userIndex = users.findIndex(user => user.id === +userId)
 
-  users.splice(userIndex, 1)
-  fs.writeFileSync(`db/users.json`, JSON.stringify(users, null, 2))
+//   users.splice(userIndex, 1)
+//   fs.writeFileSync(`db/users.json`, JSON.stringify(users, null, 2))
 
-  res.send('deleted user')
-})
+//   res.send('deleted user')
+// })
 
-app.get('/home', (req, res) => {
-  res.send('Welcome to Express home! :)')
-})
+// app.post('/db', (req, res) => {
+//   const { name } = req.params
+//   const obj = Object.keys(req.body).length ? req.body : []
 
-app.listen(port, () => {
-  console.log(`Express app listening on port ${port}`)
-})
+//   fs.writeFileSync(`db/${name}.json`, JSON.stringify(obj, null, 2))
 
-app.post('/db', (req, res) => {
-  const { name } = req.params
-  const obj = Object.keys(req.body).length ? req.body : []
+//   res.send('ok')
+// })
 
-  fs.writeFileSync(`db/${name}.json`, JSON.stringify(obj, null, 2))
+// app.get('/db', (req, res) => {
+//   fs.readFileSync('db/hello.json', 'utf-8', (err, data) => {
+//     console.log(data)
+//     res.send(data)
+//   })
+// })
 
-  res.send('ok')
-})
+//error handling
+app.use((err, req, res, next) => {
+  const [statusCode, msg] = err
 
-app.get('/db', (req, res) => {
-  fs.readFileSync('db/hello.json', 'utf-8', (err, data) => {
-    console.log(data)
-    res.send(data)
+  res.status(statusCode).send({
+    error: true,
+    message: msg
   })
+})
+
+app.listen(2500, () => {
+  console.log(`Express app listening on port: 2500`)
 })
